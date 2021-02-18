@@ -8,28 +8,49 @@
 #
 #   SHCOPYRIGHT
 
-. $BB_BIN_DIR/bb_pipeline_tools/bb_set_header 
+##. $BB_BIN_DIR/bb_pipeline_tools/bb_set_header
 
 # All fix settings are held in the settings.sh file - edit this file to suit your setup
 . ${FSL_FIXDIR}/settings.sh
+
+source `dirname $0`/settings.sh || { echo "Failed to source settings.sh!" 1>&2; exit 1; }
 origDir=`pwd`
 
+dataDir=$1
+train=$2
+hpf=$3
+fMRI=$4
+
+echo ${dataDir}
+echo ${train}
+echo ${hpf}
+echo ${fMRI}
 #############################################################
 
 [ "$1" = "" ] && exit
 
-if [ -d $1/fMRI/rfMRI.ica ] ; then 
+if [ -d ${dataDir}/${fMRI}/rfMRI.ica ] ; then
 
-    cd $1/fMRI/rfMRI.ica
+    cd ${dataDir}/${fMRI}/rfMRI.ica
 
-    ${FSLDIR}/bin/imcp ../../T1/T1_fast/T1_brain_pveseg reg/highres_pveseg
-    ${FSLDIR}/bin/invwarp --ref=reg/example_func -w reg/example_func2standard_warp -o reg/standard2example_func_warp
-    ${FSL_FIXDIR}/fix . ${FSL_FIXDIR}/training_files/UKBiobank.RData 20 -m -h 100
+    ${FSLDIR}/bin/imcp ${dataDir}/T1/T1_fast/T1_brain_pveseg reg/highres_pveseg
+    ${FSLDIR}/bin/invwarp --ref=reg/example_func -w reg/example_func2standard_warp -o reg/standard2example_func_warp -v
 
-    mkdir -p reg_standard
+	## WhII_Standard.RData derived from more traditional early parallel scanning in the Whitehall imaging study,
+    	## using no EPI acceleration: TR=3s, Resolution=3x3x3mm, Session=10mins, =200 timepoints, no spatial smoothing,
+    	## 100s FWHM highpass temporal filtering.
+    	## BLSA fMRI data: TR =2s, Resolution= 3x3x3.972973mm, 	Session=180x2/60=6mins=180 timepoints, no sptial smoothing
+
+	## Standard.RData - for use on more "standard" FMRI datasets / analyses; e.g., TR=3s, Resolution=3.5x3.5x3.5mm, Session=6mins, default FEAT preprocessing (including default spatial smoothing).
+
+  	${FSL_FIXDIR}/fix . ${train} 20 -m -h ${hpf}
+
+	mkdir -pv reg_standard
+
     ${FSLDIR}/bin/applywarp --ref=reg/standard --in=filtered_func_data_clean --out=reg_standard/filtered_func_data_clean --warp=reg/example_func2standard_warp --interp=spline
 
     ${FSLDIR}/bin/fslmaths reg_standard/filtered_func_data_clean -mas $templ/MNI152_T1_2mm_brain_mask_bin reg_standard/filtered_func_data_clean
+
     ${FSLDIR}/bin/fslmaths reg_standard/filtered_func_data_clean -Tstd -bin reg_standard/filtered_func_data_clean_stdmask
 
     cd $origDir
@@ -37,5 +58,6 @@ else
     echo "No rfMRI directory for subject $1"
 fi
 
-. $BB_BIN_DIR/bb_pipeline_tools/bb_set_footer 
+##. $BB_BIN_DIR/bb_pipeline_tools/bb_set_footer
 
+	
