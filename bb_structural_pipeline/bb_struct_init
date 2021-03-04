@@ -21,7 +21,7 @@
 # limitations under the License.
 #
 
-. $BB_BIN_DIR/bb_pipeline_tools/bb_set_header 
+##. $BB_BIN_DIR/bb_pipeline_tools/bb_set_header 
 
 cd $1/T1
 
@@ -31,12 +31,13 @@ if [ `${FSLDIR}/bin/imtest T1` = 0 ] ; then
 fi
 
 if [ `${FSLDIR}/bin/imtest T1_orig` = 0 ] ; then
-  ${FSLDIR}/bin/immv T1 T1_orig
+  ##${FSLDIR}/bin/immv T1 T1_orig
+  mv T1.nii.gz T1_orig.nii.gz
 fi
 
 #Calculate and apply the Gradient Distortion Unwarp
-$BB_BIN_DIR/bb_pipeline_tools/bb_GDC --workingdir=./T1_GDC/ --in=T1_orig.nii.gz --out=T1_orig_ud.nii.gz --owarp=T1_orig_ud_warp.nii.gz
-
+##$BB_BIN_DIR/bb_pipeline_tools/bb_GDC --workingdir=./T1_GDC/ --in=T1_orig.nii.gz --out=T1_orig_ud.nii.gz --owarp=T1_orig_ud_warp.nii.gz
+cp T1_orig.nii.gz T1_orig_ud.nii.gz #--owarp=T1_orig_ud_warp.nii.gz
 #Calculate where does the brain start in the z dimension and then extract the roi
 head_top=`${FSLDIR}/bin/robustfov -i T1_orig_ud | grep -v Final | head -n 1 | awk '{print $5}'`
 ${FSLDIR}/bin/fslmaths T1_orig_ud -roi 0 -1 0 -1 $head_top 170 0 1 T1_tmp
@@ -45,9 +46,10 @@ ${FSLDIR}/bin/fslmaths T1_orig_ud -roi 0 -1 0 -1 $head_top 170 0 1 T1_tmp
 ${FSLDIR}/bin/bet T1_tmp T1_tmp_brain -R
 
 #Reduces the FOV of T1_orig_ud by calculating a registration from T1_tmp_brain to ssref and applies it to T1_orig_ud
-${FSLDIR}/bin/standard_space_roi T1_tmp_brain T1_tmp2 -maskNONE -ssref $FSLDIR/data/standard/MNI152_T1_1mm_brain -altinput T1_orig_ud -d
+${FSLDIR}/bin/standard_space_roi T1_tmp_brain T1_tmp2 -maskNONE -ssref $FSLDIR/data/standard/MNI152_T1_1mm_brain -altinput T1_orig_ud -d -usesqform 
 
-${FSLDIR}/bin/immv T1_tmp2 T1
+##${FSLDIR}/bin/immv T1_tmp2 T1
+mv T1_tmp2.nii.gz T1.nii.gz
 
 #Generate the actual affine from the orig_ud volume to the cut version we have now and combine it to have an affine matrix from orig_ud to MNI
 ${FSLDIR}/bin/flirt -in T1 -ref T1_orig_ud -omat T1_to_T1_orig_ud.mat -schedule $FSLDIR/etc/flirtsch/xyztrans.sch 
@@ -61,7 +63,8 @@ ${FSLDIR}/bin/fnirt --in=T1 --ref=$FSLDIR/data/standard/MNI152_T1_1mm --aff=T1_t
   --jout=T1_to_MNI_warp_jac --iout=T1_tmp4.nii.gz --interp=spline
 
 #Combine both transforms (Gradient Distortion Unwarp and T1 to MNI) into one and then apply it.
-${FSLDIR}/bin/convertwarp --ref=$FSLDIR/data/standard/MNI152_T1_1mm --warp1=T1_orig_ud_warp --midmat=T1_orig_ud_to_T1.mat --warp2=T1_to_MNI_warp --out=T1_orig_to_MNI_warp
+##${FSLDIR}/bin/convertwarp --ref=$FSLDIR/data/standard/MNI152_T1_1mm --warp1=T1_orig_ud_warp --midmat=T1_orig_ud_to_T1.mat --warp2=T1_to_MNI_warp --out=T1_orig_to_MNI_warp
+${FSLDIR}/bin/convertwarp --ref=$FSLDIR/data/standard/MNI152_T1_1mm --premat=T1_orig_ud_to_T1.mat --warp1=T1_to_MNI_warp --out=T1_orig_to_MNI_warp
 ${FSLDIR}/bin/applywarp --rel -i T1_orig -r $FSLDIR/data/standard/MNI152_T1_1mm -w T1_orig_to_MNI_warp -o T1_brain_to_MNI --interp=spline
 
 #Create brain mask
@@ -179,18 +182,18 @@ else
 fi
 
 #Run First
-mkdir T1_first
+##mkdir T1_first
 
 #Creates a link inside T1_first to ./T1_unbiased_brain.nii.gz (In the present working directory)
-ln -s ../T1_unbiased_brain.nii.gz T1_first/T1_unbiased_brain.nii.gz
-${FSLDIR}/bin/run_first_all -i T1_first/T1_unbiased_brain -b -o T1_first/T1_first
+##ln -s ../T1_unbiased_brain.nii.gz T1_first/T1_unbiased_brain.nii.gz
+##${FSLDIR}/bin/run_first_all -i T1_first/T1_unbiased_brain -b -o T1_first/T1_first
 
 
 #Run Siena
-$BB_BIN_DIR/bb_structural_pipeline/bb_sienax `pwd`/..
+##$BB_BIN_DIR/bb_structural_pipeline/bb_sienax `pwd`/..
 
 #Run VBM
-$BB_BIN_DIR/bb_structural_pipeline/bb_vbm `pwd`/..
+##$BB_BIN_DIR/bb_structural_pipeline/bb_vbm `pwd`/..
 
 cd ..
 
@@ -204,7 +207,7 @@ $BB_BIN_DIR/bb_structural_pipeline/bb_QC_CNR_corners_complete ../$1
 #The rest of the script works with T2 only if there is one.
 if [ `${FSLDIR}/bin/imtest T2_FLAIR/T2_FLAIR_orig` = 0 ] ; then
   echo "WARNING: No T2 in $1"
-  . $BB_BIN_DIR/bb_pipeline_tools/bb_set_footer 
+  ##. $BB_BIN_DIR/bb_pipeline_tools/bb_set_footer 
   exit
 fi
 
@@ -221,10 +224,9 @@ fi
 cd ../..
 
 #Run BIANCA
-$BB_BIN_DIR/bb_structural_pipeline/bb_BIANCA $1
+##$BB_BIN_DIR/bb_structural_pipeline/bb_BIANCA $1
 
 
-. $BB_BIN_DIR/bb_pipeline_tools/bb_set_footer 
+##. $BB_BIN_DIR/bb_pipeline_tools/bb_set_footer 
 
 set +x
-

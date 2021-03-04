@@ -1,0 +1,2 @@
+templates/group/melodic_IC_100.nii.gz filter=lfs diff=lfs merge=lfs -text
+templates/group/melodic_IC_25.nii.gz filter=lfs diff=lfs merge=lfs -text
